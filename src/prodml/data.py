@@ -1,27 +1,25 @@
 import pandas as pd
 from pathlib import Path
 import config
+from sklearn.model_selection import train_test_split
 
-def load_data(file_path: Path) -> pd.DataFrame:
+def load_data() -> pd.DataFrame:
     """
     Load data from a Parquet file into a pandas DataFrame.
-
-    Args:
-        file_path (Path): The path to the Parquet file.
 
     Returns:
         pd.DataFrame: A DataFrame containing the loaded data.
     """
-    df = pd.read_parquet(file_path)
+    
+    df = pd.read_parquet(config.settings.data_path)
     return df
 
+def split_data(df) -> tuple:
+    df_train, df_val = train_test_split(df, test_size=config.settings.validation_size, random_state=config.settings.random_state)
+    return df_train, df_val
+
 def main():
-    root_dir = Path(__file__).resolve().parents[2]
-    target_path = config.data_path
-    print(target_path)
-    file_path = root_dir / target_path
-    df = load_data(file_path)
-    print(df.head(5))
-    
+    df = load_data()
+    df_train, df_val = split_data(df)
 if __name__ == "__main__":
     main()

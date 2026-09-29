@@ -1,66 +1,75 @@
 import pickle
 from sklearn.feature_extraction import DictVectorizer
-from data import load_data
-from features import extract_features
+from sklearn.linear_model import LinearRegression
+from prodml import data, features, config, logging_conf
 from pathlib import Path
-import config
+import logging
+
+FeatureDict = dict[str, str | float]
+logger = logging.getLogger(__name__)
+
+def load_model(model_path: Path) -> tuple[LinearRegression, DictVectorizer]:
+    """
+    Load a trained model and DictVectorizer from a file.
+
+    Args:
+        model_path (Path): The path to the model file.
+    Returns:
+        tuple: A tuple containing the loaded LinearRegression model and DictVectorizer.
+    """
+    with open(model_path, "rb") as file:
+        model, dict_vect = pickle.load(file)
+    return model, dict_vect
 
 class Predictor(object):
-    def __init__(self, model_path: str = None, model = None):
+    def __init__(self,
+                 model: LinearRegression,
+                 vectorizer: DictVectorizer):
         """
         Initialize the Predictor with a trained model.
-
-        Args:
-            model_path (str): The path to the trained model file.
         """
-        if model_path is not None:
-            self.model_path = model_path
-            self.model = self.load_model()
-        elif model is not None:
-            self.model = model
-        else:
-            raise ValueError("Either model_path or model must be provided.")
+        self.model = model
+        self.dict_vect = vectorizer
 
-    def load_model(self):
-        """
-        Load the trained model from the specified path.
 
-        Returns:
-            model: The loaded trained model.
-        """
-        with open(self.model_path, "rb") as file:
-            model = pickle.load(file)
-        return model
+    def predict_single(self, features: FeatureDict) -> float:
+        logger.debug(f"Predicting for features: {features}")
+        trip_distance = features.get("trip_distance")
+        if trip_distance > 100:
+            logger.warning(f"Trip distance {trip_distance} is unusually high. Prediction may be unreliable.")
 
-    def predict(self, X):
-        """
-        Make predictions using the trained model.
+        X = self.dict_vect.transform([features])
+        prediction = self.model.predict(X)
+        return prediction[0]
 
-        Args:
-            X: The feature matrix for prediction.
-
-        Returns:
-            numpy array: The predicted values.
-        """
-        return self.model.predict(X)
+    def predict_batch(self, features_list: list[FeatureDict]) -> list[float]:
+        logger.debug(f"Predicting for batch of features: {features_list}")
+        X = self.dict_vect.transform(features_list)
+        predictions = self.model.predict(X)
+        return predictions.tolist()
 
 
 def main():
     # Example usage
-    model_path = "models/trained_model.pkl"
-    predictor = Predictor(model_path=model_path)
+    logging_conf.setup_logging(log_level=logging.DEBUG)
+    model, dict_vect = load_model(config.settings.model_path)
+
+    predictor = Predictor(model, dict_vect)
 
     # Load data and extract features for prediction
-    root_dir = Path(__file__).resolve().parents[2]
-    target_path = config.data_path
-    file_path = root_dir / target_path
-    df = load_data(file_path)
-    dict_vect = DictVectorizer(sparse=True)
-    X, y = extract_features(df, dict_vect)
+    df = data.load_data()
+    _, df_val = data.split_data(df)
+    df_val = features.prepare_features(df_val)
+    featuresDict = df_val[["PU_DO", "trip_distance"]].to_dict(orient='records')
 
-    # Make predictions
-    predictions = predictor.predict(X)
-    print(predictions[:5])  # Print the first 5 predictions
+    # Make predictions for the validation set
+    predictions = predictor.predict_batch(featuresDict)
+    logger.info(f"Predictions for validation set: {predictions[:5]}")  # Log first 5 predictions
+
+    # Make a single prediction
+    single_features = {"PU_DO": "1_2", "trip_distance": 120.0}
+    single_prediction = predictor.predict_single(single_features)
+    logger.info(f"Single prediction for features {single_features}: {single_prediction}")
 
 if __name__ == "__main__":
     main()

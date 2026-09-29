@@ -1,41 +1,59 @@
 from sklearn.feature_extraction import DictVectorizer
-from data import load_data
 import pandas as pd
 from pathlib import Path
 import config
+from prodml import data
 
-def extract_features(df: pd.DataFrame, vectorizer: DictVectorizer = None) -> tuple:
+def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Extract features and target variable from the DataFrame.
+    Add a 'duration' column to the DataFrame, calculated as the difference between dropoff and pickup times in minutes.
 
     Args:
-        df (pd.DataFrame): The input DataFrame containing the data.
-        vectorizer (DictVectorizer, optional): An instance of DictVectorizer for feature extraction. If None, a new instance will be created.
+        df (pd.DataFrame): The input DataFrame containing 'lpep_pickup_datetime' and 'lpep_dropoff_datetime'
+    Returns:
+        pd.DataFrame: The DataFrame with the added 'duration' column.
+    """
+    df['duration'] = (df['lpep_dropoff_datetime'] - df['lpep_pickup_datetime']).dt.total_seconds() / 60
+    return df
+
+def filter_rows(df: pd.DataFrame) -> pd.DataFrame:
+    duration_filter = (df['duration'] >= config.settings.min_duration) & (df['duration'] <= config.settings.max_duration)
+    trip_distance_filter = (df['trip_distance'] >= config.settings.min_trip_distance) & (df['trip_distance'] <= config.settings.max_trip_distance)
+    df = df[duration_filter & trip_distance_filter].copy()
+    return df
+
+def pu_do(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a new column 'PU_DO' by concatenating 'PULocationID' and 'DOLocationID'.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing 'PULocationID' and 'DOLocationID'.
     
     Returns:
-        X (sparse matrix): The feature matrix.
-        y (numpy array): The target variable (duration).
+        pd.DataFrame: The DataFrame with the added 'PU_DO' column.
     """
-    if vectorizer is None:
-        vectorizer = DictVectorizer(sparse=True)
+    result = df.copy()
+    result['PU_DO'] = result['PULocationID'].astype(str) + '_' + result['DOLocationID'].astype(str)
+    return result
 
-    df['duration'] = (df['lpep_dropoff_datetime'] - df['lpep_pickup_datetime']).dt.total_seconds() / 60
-    df = df[(df.duration >= 1) & (df.duration <= 60)]
-    df_features = df[['trip_distance', 'PULocationID', 'DOLocationID']]
-    X = vectorizer.fit_transform(df_features.to_dict(orient='records'))
-    y = df.duration.values
 
-    return X, y
+def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Prepare features for model training or prediction by adding duration, filtering rows, and creating the 'PU_DO' column.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+    Returns:
+        pd.DataFrame: The DataFrame with prepared features.
+    """
+    result = add_duration(df)
+    result = filter_rows(result)
+    result = pu_do(result)
+    return result
 
 def main():
-    root_dir = Path(__file__).resolve().parents[2]
-    target_path = config.data_path
-    file_path = root_dir / target_path
-    df = load_data(file_path)
-    dict_vect = DictVectorizer(sparse=True)
-    X, y = extract_features(df, dict_vect)
-    print(X.shape)
-    print(y.shape)
+    df = data.load_data()
+    df = prepare_features(df)
 
 if __name__ == "__main__":   
     main()

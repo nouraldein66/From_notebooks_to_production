@@ -3,9 +3,13 @@ name = "prodml"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
+    "fastapi[standard]>=0.141.1",
     "numpy>=2.2.6",
+    "onnxruntime>=1.24.3",
     "pandas>=2.3.3",
     "pyarrow>=25.0.1",
+    "python-json-logger>=4.2.0",
     "scikit-learn>=1.7.2",
+    "skl2onnx>=1.20.0",
 ]
 
