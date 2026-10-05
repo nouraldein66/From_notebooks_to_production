@@ -1,8 +1,7 @@
 from sklearn.feature_extraction import DictVectorizer
 import pandas as pd
 from pathlib import Path
-import config
-from prodml import data
+from prodml import settings, load_data, split_data
 
 def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -17,8 +16,8 @@ def add_duration(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def filter_rows(df: pd.DataFrame) -> pd.DataFrame:
-    duration_filter = (df['duration'] >= config.settings.min_duration) & (df['duration'] <= config.settings.max_duration)
-    trip_distance_filter = (df['trip_distance'] >= config.settings.min_trip_distance) & (df['trip_distance'] <= config.settings.max_trip_distance)
+    duration_filter = (df['duration'] >= settings.min_duration) & (df['duration'] <= settings.max_duration)
+    trip_distance_filter = (df['trip_distance'] >= settings.min_trip_distance) & (df['trip_distance'] <= settings.max_trip_distance)
     df = df[duration_filter & trip_distance_filter].copy()
     return df
 
@@ -52,7 +51,7 @@ def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 def main():
-    df = data.load_data()
+    df = load_data()
     df = prepare_features(df)
 
 if __name__ == "__main__":   

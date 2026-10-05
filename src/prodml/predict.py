@@ -1,7 +1,7 @@
 import pickle
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LinearRegression
-from prodml import data, features, config, logging_conf
+from prodml import settings, load_data, split_data, prepare_features, setup_logging
 from pathlib import Path
 import logging
 
@@ -51,15 +51,15 @@ class Predictor(object):
 
 def main():
     # Example usage
-    logging_conf.setup_logging(log_level=logging.DEBUG)
-    model, dict_vect = load_model(config.settings.model_path)
+    setup_logging(log_level=logging.DEBUG)
+    model, dict_vect = load_model(settings.model_path)
 
     predictor = Predictor(model, dict_vect)
 
     # Load data and extract features for prediction
-    df = data.load_data()
-    _, df_val = data.split_data(df)
-    df_val = features.prepare_features(df_val)
+    df = load_data()
+    _, df_val = split_data(df)
+    df_val = prepare_features(df_val)
     featuresDict = df_val[["PU_DO", "trip_distance"]].to_dict(orient='records')
 
     # Make predictions for the validation set

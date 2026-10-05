@@ -17,10 +17,7 @@ from prodml.api.schemas import (
     PredictionRequest,
     PredictionResponse,
 )
-from prodml.config import settings
-from prodml.logging_conf import correlation_id_ctx, setup_logging
-from prodml.predict import Predictor, load_model
-
+from prodml import settings, setup_logging, correlation_id_ctx, load_model, Predictor
 logger = logging.getLogger(__name__)
 
 
