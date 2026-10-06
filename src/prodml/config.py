@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
@@ -15,4 +15,10 @@ class Settings(BaseSettings):
     min_trip_distance: float = 0.0
     max_trip_distance: float = 50.0
 
+    model_config = SettingsConfigDict(
+        env_prefix="PRODML_",  # Environment variables should start with PRODML_,
+        env_file=".env",
+        extra="ignore",  # Ignore extra environment variables
+    )
+    
 settings = Settings()
